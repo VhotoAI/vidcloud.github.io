@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Video Collection</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #444;
+    }
+    .video-list {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .video-item {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 12px;
+      margin-bottom: 16px;
+      transition: transform 0.2s;
+    }
+    .video-item:hover {
+      transform: translateY(-2px);
+    }
+    .cover {
+      flex-shrink: 0;
+      width: 120px;
+      height: 160px;
+      border-radius: 6px;
+      object-fit: cover;
+      margin-right: 16px;
+    }
+    .video-info {
+      flex: 1;
+    }
+    .video-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: #222;
+    }
+    .video-meta {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 10px;
+    }
+    .btn-group button {
+      margin-right: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: #fff;
+    }
+    .btn-sd { background: #4caf50; }
+    .btn-hd { background: #2196f3; }
+    .btn-uhd { background: #9c27b0; }
+    .btn-group button:hover {
+      opacity: 0.85;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+</head>
+<body>
+  <h1 id="title"></h1>
+  <div id="videoList" class="video-list"></div>
+
+  <script>
+    function showList(data) {
+      const container = document.getElementById("videoList");
+      container.innerHTML = "";
+
+      data.forEach(item => {
+        const { meta } = item;
+
+        const div = document.createElement("div");
+        div.className = "video-item";
+
+        const img = document.createElement("img");
+        img.className = "cover";
+        img.src = meta.cover;
+
+        const info = document.createElement("div");
+        info.className = "video-info";
+
+        const title = document.createElement("div");
+        title.className = "video-title";
+        title.textContent = meta.title;
+
+        const metaInfo = document.createElement("div");
+        metaInfo.className = "video-meta";
+        metaInfo.textContent = `Duration: ${meta.duration}s`;
+
+        const btnGroup = document.createElement("div");
+        btnGroup.className = "btn-group";
+
+        if (meta.sdUrl) {
+          const btnSD = document.createElement("button");
+          btnSD.className = "btn-sd";
+          btnSD.textContent = "Download SD";
+          btnSD.onclick = () => window.open(meta.sdUrl);
+          btnGroup.appendChild(btnSD);
+        }
+        if (meta.hdUrl) {
+          const btnHD = document.createElement("button");
+          btnHD.className = "btn-hd";
+          btnHD.textContent = "Download HD";
+          btnHD.onclick = () => window.open(meta.hdUrl);
+          btnGroup.appendChild(btnHD);
+        }
+        if (meta.uhdUrl) {
+          const btnUHD = document.createElement("button");
+          btnUHD.className = "btn-uhd";
+          btnUHD.textContent = "Download UHD";
+          btnUHD.onclick = () => window.open(meta.uhdUrl);
+          btnGroup.appendChild(btnUHD);
+        }
+
+        info.appendChild(title);
+        info.appendChild(metaInfo);
+        info.appendChild(btnGroup);
+
+        div.appendChild(img);
+        div.appendChild(info);
+
+        container.appendChild(div);
+      });
+    }
+
+    async function loadVideos(password) {
+      try {
+        const res = await fetch("http://localhost:8100/share/collection/QVpk3V06vAyZ", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ password: md5(password || "") })
+        });
+        const json = await res.json();
+
+        if (json.code !== 0) {
+          document.getElementById("videoList").innerHTML = "<p>" + json.message + "</p>";
+
+          if (json.code === 10011) {
+            const password = prompt("This collection is private. Please enter the password:");
+            if (password) {
+              loadVideos(password);
+            }
+          }
+          return;
+        }
+        document.getElementById("title").textContent = json.data.title || "Video Collection";
+        document.head.title = json.data.title || "Video Collection";
+        showList(json.data.videos);
+      } catch (err) {
+        document.getElementById("videoList").innerHTML = "<p>" + err.message + "</p>";
+      }
+    }
+    loadVideos();
+  </script>
+</body>
+</html>
